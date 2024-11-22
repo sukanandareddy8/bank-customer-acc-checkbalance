@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="1be9a6c2-b7fd-4ee5-9d47-14359dbcc017" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Syam@sd7" database="suka" />
+	</db:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="558c8559-4f61-4e65-9f1b-b8db4ce211a7" file="config\dev.properties" />
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="dd8f2c9d-0b11-4d17-b1cc-10e704f6c5e0" >
+		<email:smtp-connection host="smtp.gmail.com" port="587" user="sukanandareddy8@gmail.com" password="xpxnnochqyxlmhfp" >
+			<email:properties >
+				<email:property key="#[mail.smtp.starttls.enable]" value="true	" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+	<flow name="bank-customer-acc-checkbalanceFlow" doc:id="69e627db-f215-4880-a257-d24980d834ae" >
+		<scheduler doc:name="Scheduler" doc:id="5a371812-d873-473a-b634-1cfc59222091" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="2" timeUnit="MINUTES" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Logger" doc:id="d9511c6b-92c9-41d2-8b7f-7e09b0e7b4dc" message="------------------started flow----------------------------"/>
+		<db:select doc:name="Select" doc:id="ac50b5ac-5ba6-4ddd-bcd9-fd9e747aa423" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from bank_transactions]]></db:sql>
+		</db:select>
+		<foreach doc:name="For Each" doc:id="14142aad-f106-4227-90ae-dd3a06cbf501" >
+			<ee:transform doc:name="Transform Message" doc:id="e9d65cf7-0da8-4990-badc-412fc3edaef9" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<email:send doc:name="emai sent" doc:id="90775245-1084-4975-9321-76c76147876c" config-ref="Email_SMTP" subject='#["todays total balance" ++ payload.branchName]'>
+				<email:to-addresses >
+					<email:to-address value="#[payload.mailID]" />
+				</email:to-addresses>
+				<email:body contentType="text/plain">
+					<email:content ><![CDATA[#["your total balance today is " ++ payload.totalBalance]]]></email:content>
+				</email:body>
+			</email:send>
+			<logger level="INFO" doc:name="Logger" doc:id="449a822f-4ae0-483c-9263-fec439d92d3a" message="email sent for the user: #[payload.mailID]"/>
+		</foreach>
+	</flow>
+</mule>
